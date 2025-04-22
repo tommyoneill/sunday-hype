@@ -88,7 +88,7 @@ export default function Home() {
             rel="noopener noreferrer"
             className="text-[hsl(280,100%,70%)] hover:underline"
           >
-            Tommy O'Neill
+            Tommy ONeill
           </a></p>
           <p className="mt-2">Readings provided by <a 
             href="https://www.lectserve.com/" 

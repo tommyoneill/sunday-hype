@@ -79,3 +79,53 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [OpenAI](https://openai.com/) for powering the teen-friendly interpretations
 - The Catholic Church for the lectionary readings
 
+## Deployment
+
+### Vercel
+
+Sunday Hype is optimized for deployment on Vercel. Here's how to deploy:
+
+1. Push your code to a GitHub repository
+2. Go to [Vercel](https://vercel.com) and create a new project
+3. Import your GitHub repository
+4. Configure the following environment variables in Vercel:
+   - `DATABASE_URL`: Your PostgreSQL connection string
+   - `OPENAI_API_KEY`: Your OpenAI API key
+   - `NODE_ENV`: Set to "production"
+
+Vercel will automatically:
+- Build your Next.js application
+- Run database migrations
+- Deploy your application
+- Set up automatic deployments on every push to your main branch
+
+### Build Settings
+
+The following build settings are recommended for optimal performance:
+
+```json
+{
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next"
+}
+```
+
+### Environment Variables
+
+Make sure to add these environment variables in your Vercel project settings:
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `NODE_ENV` | Set to "production" |
+
+### Custom Domain
+
+To set up a custom domain:
+1. Go to your project settings in Vercel
+2. Navigate to the "Domains" section
+3. Add your domain and follow the DNS configuration instructions
+
