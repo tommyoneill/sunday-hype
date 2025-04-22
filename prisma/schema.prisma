@@ -7,21 +7,22 @@ generator client {
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
 }
 
 model LectionaryReading {
-    id              Int      @id @default(autoincrement())
-    date            DateTime @unique
-    firstReading    String
-    psalm           String
-    epistle         String
-    gospel          String
-    weekName        String
-    interpretation  String?  // ChatGPT's interpretation
-    createdAt       DateTime @default(now())
-    updatedAt       DateTime @updatedAt
+    id              Int      @id @default(autoincrement()) @db.Integer
+    date            DateTime @unique @db.Timestamp(6)
+    firstReading    String   @db.Text
+    psalm           String   @db.Text
+    epistle         String   @db.Text
+    gospel          String   @db.Text
+    weekName        String   @db.Text
+    interpretation  String?  @db.Text // ChatGPT's interpretation
+    createdAt       DateTime @default(now()) @db.Timestamp(6)
+    updatedAt       DateTime @updatedAt @db.Timestamp(6)
 
     @@index([date])
 }
