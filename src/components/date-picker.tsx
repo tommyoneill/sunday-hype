@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "~/trpc/react";
 
 interface DatePickerProps {
   selectedDate: Date | null;
@@ -31,7 +30,7 @@ export function DatePicker({ selectedDate, onDateChange, upcomingSundays }: Date
     const firstDay = new Date(year, month, 1);
     
     // Find the first Sunday
-    let currentDate = new Date(firstDay);
+    const currentDate = new Date(firstDay);
     while (currentDate.getDay() !== 0) {
       currentDate.setDate(currentDate.getDate() + 1);
     }

@@ -1,7 +1,5 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
-import { db } from "../../db";
-import { type LectionaryReading } from "@prisma/client";
 import { promises as fs } from "fs";
 import path from "path";
 import { openai } from "../../openai";
