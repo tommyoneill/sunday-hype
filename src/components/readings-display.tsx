@@ -3,6 +3,7 @@
 import type { LectionaryReading } from "@prisma/client";
 import { Loading } from "./loading";
 import ReactMarkdown from "react-markdown";
+import { trackReadingShare } from "~/utils/analytics";
 
 // Type for readings that come directly from the API (without DB fields)
 type APIReading = {
@@ -29,7 +30,37 @@ function ReadingSection({ title, content }: { title: string; content: string }) 
   );
 }
 
+function ShareButton({ platform, onClick }: { platform: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20"
+    >
+      Share on {platform}
+    </button>
+  );
+}
+
 export function ReadingsDisplay({ readings, isLoading }: ReadingsDisplayProps) {
+  const handleShare = (platform: string) => {
+    const shareText = `Check out this week's readings: ${readings?.weekName}\n\nFirst Reading: ${readings?.firstReading}\nPsalm: ${readings?.psalm}\nEpistle: ${readings?.epistle}\nGospel: ${readings?.gospel}\n\nShared via Sunday Hype`;
+    
+    if (platform === 'twitter') {
+      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+      window.open(url, '_blank');
+    } else if (platform === 'facebook') {
+      const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(shareText)}`;
+      window.open(url, '_blank');
+    } else if (platform === 'whatsapp') {
+      const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+      window.open(url, '_blank');
+    }
+    
+    if (readings && 'id' in readings) {
+      trackReadingShare(readings.id.toString(), platform);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="mt-8 w-full max-w-2xl rounded-lg bg-white/10 p-6">
