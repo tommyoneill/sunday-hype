@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { TRPCReactProvider } from "~/trpc/react";
 
@@ -78,6 +79,7 @@ export default function RootLayout({
         <TRPCReactProvider>
           {children}
           <Analytics />
+          <SpeedInsights />
         </TRPCReactProvider>
       </body>
     </html>
