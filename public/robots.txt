@@ -1,0 +1,18 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Allow Facebook's crawler
+User-agent: facebookexternalhit
+Allow: /
+
+# Allow Twitter's crawler
+User-agent: Twitterbot
+Allow: /
+
+# Allow LinkedIn's crawler
+User-agent: LinkedInBot
+Allow: /
+
+# Sitemap location
+Sitemap: https://www.sundayhype.com/sitemap.xml 
