@@ -18,18 +18,13 @@ function createLocalDate(date: Date) {
 function getUpcomingSundays() {
   const sundays = [];
   const today = createLocalDate(new Date());
-  const currentDay = today.getDay();
-  const daysUntilNextSunday = currentDay === 0 ? 0 : 7 - currentDay;
   
-  // Start from next Sunday
-  const startDate = new Date(today);
-  startDate.setDate(today.getDate() + daysUntilNextSunday);
-  
-  // Add next 4 Sundays
+  // Get the next 4 Sundays
   for (let i = 0; i < 4; i++) {
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + (i * 7));
-    sundays.push(createLocalDate(date));
+    const nextSunday = new Date(today);
+    // Set to next Sunday
+    nextSunday.setDate(today.getDate() + ((7 - today.getDay()) % 7) + (i * 7));
+    sundays.push(createLocalDate(nextSunday));
   }
   
   return sundays;

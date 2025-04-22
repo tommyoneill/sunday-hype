@@ -6,6 +6,15 @@ import { promises as fs } from "fs";
 import path from "path";
 import { openai } from "../../openai";
 
+interface LectserveResponse {
+  red_letter?: {
+    services?: Array<{
+      name?: string;
+      readings?: string[];
+    }>;
+  };
+}
+
 export const lectionaryRouter = createTRPCRouter({
   getUpcomingSundays: publicProcedure
     .query(async () => {
@@ -37,7 +46,7 @@ export const lectionaryRouter = createTRPCRouter({
 
       // Fetch from Lectserve API
       const response = await fetch(`https://www.lectserve.com/date/${input.date.toISOString().split('T')[0]}`);
-      const data = await response.json();
+      const data = (await response.json()) as LectserveResponse;
 
       console.log('Lectserve API Response:', JSON.stringify(data, null, 2));
 
@@ -63,8 +72,8 @@ export const lectionaryRouter = createTRPCRouter({
       }
 
       const service = data.red_letter.services[0];
-      const readings = service.readings || [];
-      const weekName = service.name || "Unknown Week";
+      const readings = service.readings ?? [];
+      const weekName = service.name ?? "Unknown Week";
 
       console.log('Service data:', {
         readings,
@@ -89,10 +98,10 @@ export const lectionaryRouter = createTRPCRouter({
       }
       
       // Ensure we have all required readings
-      const firstReading = readings[0] || "No readings available for this date";
-      const psalm = readings[1] || "No readings available for this date";
-      const epistle = readings[2] || "No readings available for this date";
-      const gospel = readings[3] || "No readings available for this date";
+      const firstReading = readings[0] ?? "No readings available for this date";
+      const psalm = readings[1] ?? "No readings available for this date";
+      const epistle = readings[2] ?? "No readings available for this date";
+      const gospel = readings[3] ?? "No readings available for this date";
       
       // Generate teenage-friendly interpretation
       const prompt = `Please explain these Bible readings to a teenager:
@@ -118,11 +127,11 @@ export const lectionaryRouter = createTRPCRouter({
             content: prompt
           }
         ],
-        temperature: 0.7, // Controls randomness: 0 = deterministic, 1 = creative
-        max_tokens: 750, // Limit response length
-        top_p: 0.9, // Controls diversity of responses
-        frequency_penalty: 0.5, // Reduces repetition
-        presence_penalty: 0.5, // Encourages new topics
+        temperature: 0.7,
+        max_tokens: 750,
+        top_p: 0.9,
+        frequency_penalty: 0.5,
+        presence_penalty: 0.5,
       });
 
       const interpretation = chatResponse.choices[0]?.message.content ?? "";
