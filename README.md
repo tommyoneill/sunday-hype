@@ -1,7 +1,7 @@
 # Sunday Hype
 
 A modern, teen-friendly Catholic lectionary app that makes Mass readings more engaging and accessible for young people.
-
+cool stuff
 ## Overview
 
 Sunday Hype is a web application that:
