@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 
 const EARSHOT_SCRIPT_SRC = "https://cdn.earshotbot.com/v1/earshot.iife.js";
 const LOADER_MARK = "data-earshot-loader";
+/** ~10s at 60fps — parsing/eval of the IIFE on slow mobile must fit before we give up */
+const MAX_POLL_FRAMES = 600;
 
 type EarshotInitOptions = {
   projectId: string;
@@ -45,7 +47,8 @@ export function EarshotWidget({ projectId, apiKey }: EarshotWidgetProps) {
     }
 
     let cancelled = false;
-    const maxFrames = 120;
+    let framesLeft = MAX_POLL_FRAMES;
+    let rafId = 0;
 
     const tryInit = (): boolean => {
       const api = window.Earshot;
@@ -55,12 +58,16 @@ export function EarshotWidget({ projectId, apiKey }: EarshotWidgetProps) {
       }
       if (!earshotInitialized) {
         earshotInitialized = true;
-        init.call(api, propsRef.current);
+        try {
+          init.call(api, propsRef.current);
+        } catch (err) {
+          earshotInitialized = false;
+          console.error("[Earshot] init() threw — widget will not appear:", err);
+        }
       }
       return true;
     };
 
-    let framesLeft = maxFrames;
     const poll = () => {
       if (cancelled) {
         return;
@@ -70,19 +77,24 @@ export function EarshotWidget({ projectId, apiKey }: EarshotWidgetProps) {
       }
       framesLeft -= 1;
       if (framesLeft <= 0) {
-        if (process.env.NODE_ENV === "development") {
-          console.warn(
-            "[Earshot] Timed out waiting for window.Earshot.init after loading",
-            EARSHOT_SCRIPT_SRC,
-            "- check Network tab (blocked?) and that the script URL is reachable.",
-          );
-        }
+        console.warn(
+          "[Earshot] Timed out waiting for window.Earshot.init after the script loaded.",
+          "Open the console on mobile emulation too — if you see this, try a hard refresh or check for extensions blocking JS.",
+        );
         return;
       }
-      requestAnimationFrame(poll);
+      rafId = requestAnimationFrame(poll);
     };
 
-    const startPolling = () => requestAnimationFrame(poll);
+    /** Fresh frame budget so we never reuse an exhausted counter after slow network/cache parse */
+    const startPolling = () => {
+      if (cancelled) {
+        return;
+      }
+      framesLeft = MAX_POLL_FRAMES;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(poll);
+    };
 
     let script = document.querySelector<HTMLScriptElement>(`script[${LOADER_MARK}="1"]`);
 
@@ -91,22 +103,24 @@ export function EarshotWidget({ projectId, apiKey }: EarshotWidgetProps) {
       script.src = EARSHOT_SCRIPT_SRC;
       script.async = true;
       script.setAttribute(LOADER_MARK, "1");
-      script.onload = startPolling;
+      script.onload = () => startPolling();
       script.onerror = () => {
-        if (process.env.NODE_ENV === "development") {
-          console.error("[Earshot] Script failed to load:", EARSHOT_SCRIPT_SRC);
-        }
+        console.error("[Earshot] Script failed to load:", EARSHOT_SCRIPT_SRC);
       };
       document.head.appendChild(script);
-      // Sync/cache loads can execute before `onload`; microtask catches that edge case.
-      queueMicrotask(startPolling);
+      // Sync/cache eval can expose Earshot before `load` fires — try once without burning the poll budget.
+      queueMicrotask(() => {
+        if (!cancelled) {
+          void tryInit();
+        }
+      });
     } else {
-      // Strict Mode remount: script already injected, keep polling for `init`.
       startPolling();
     }
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(rafId);
     };
   }, []);
 
