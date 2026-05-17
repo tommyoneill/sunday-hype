@@ -1,7 +1,8 @@
 "use client";
 
-import Script from "next/script";
-import { useCallback, useRef } from "react";
+import { useEffect, useRef } from "react";
+
+const EARSHOT_SCRIPT_SRC = "https://cdn.earshotbot.com/v1/earshot.iife.js";
 
 type EarshotInitOptions = {
   projectId: string;
@@ -22,27 +23,47 @@ declare global {
   }
 }
 
+/** Survives React Strict Mode double-mount so we only init once per session. */
+let earshotInitialized = false;
+
 type EarshotWidgetProps = {
   projectId: string;
   apiKey: string;
 };
 
 export function EarshotWidget({ projectId, apiKey }: EarshotWidgetProps) {
-  const didInit = useRef(false);
+  const propsRef = useRef({ projectId, apiKey });
+  propsRef.current = { projectId, apiKey };
 
-  const onScriptReady = useCallback(() => {
-    if (didInit.current || typeof window === "undefined" || !window.Earshot) {
+  useEffect(() => {
+    if (typeof document === "undefined") {
       return;
     }
-    didInit.current = true;
-    window.Earshot.init({ projectId, apiKey });
-  }, [projectId, apiKey]);
 
-  return (
-    <Script
-      src="https://cdn.earshotbot.com/v1/earshot.iife.js"
-      strategy="afterInteractive"
-      onLoad={onScriptReady}
-    />
-  );
+    let cancelled = false;
+
+    const script = document.createElement("script");
+    script.src = EARSHOT_SCRIPT_SRC;
+    script.async = true;
+    script.onload = () => {
+      if (cancelled || earshotInitialized) {
+        return;
+      }
+      const { init } = window.Earshot ?? {};
+      if (typeof init !== "function") {
+        return;
+      }
+      earshotInitialized = true;
+      init.call(window.Earshot, propsRef.current);
+    };
+
+    document.head.appendChild(script);
+
+    return () => {
+      cancelled = true;
+      script.remove();
+    };
+  }, []);
+
+  return null;
 }
