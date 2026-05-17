@@ -84,7 +84,7 @@ export function EarshotWidget({ projectId, apiKey }: EarshotWidgetProps) {
 
     const startPolling = () => requestAnimationFrame(poll);
 
-    let script = document.querySelector(`script[${LOADER_MARK}="1"]`) as HTMLScriptElement | null;
+    let script = document.querySelector<HTMLScriptElement>(`script[${LOADER_MARK}="1"]`);
 
     if (!script) {
       script = document.createElement("script");

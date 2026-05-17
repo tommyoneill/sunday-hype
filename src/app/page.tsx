@@ -6,7 +6,7 @@ import { api } from "~/trpc/react";
 import { DatePicker } from "~/components/date-picker";
 import { ReadingsDisplay } from "~/components/readings-display";
 import { Loading } from "~/components/loading";
-import { trackReadingView, trackNavigation, trackSearch, trackFilter, trackEngagement } from "~/utils/analytics";
+import { trackReadingView, trackNavigation } from "~/utils/analytics";
 
 // Helper function to create a date without timezone issues
 function createLocalDate(date: Date) {
@@ -58,25 +58,6 @@ export default function Home() {
       setPreviousPath(currentPath);
     }
   }, [currentPath, previousPath]);
-
-  // Track search
-  const handleSearch = (query: string) => {
-    // Implement search functionality here
-    const searchResults = []; // Placeholder for search results
-    trackSearch(query, searchResults.length);
-  };
-
-  // Track filter changes
-  const handleFilter = (filterType: string, value: string) => {
-    // Implement filter functionality here
-    trackFilter(filterType, value);
-  };
-
-  // Track user engagement
-  const handleEngagement = (action: string, readingId: string) => {
-    // Implement engagement functionality here
-    trackEngagement(action, readingId);
-  };
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
