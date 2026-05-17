@@ -15,14 +15,37 @@ type EarshotInitOptions = {
   primaryColor?: string;
 };
 
+type EarshotApi = {
+  init: (options: EarshotInitOptions) => void;
+  identify: (identity: Record<string, unknown>) => void;
+  reset: () => void;
+  open: () => void;
+};
+
+/** CDN IIFE can expose the flat API on `window.Earshot` or as ESM interop (`default` / nested `Earshot`). */
+function resolveEarshotApi(): EarshotApi | null {
+  const root = window.Earshot as unknown;
+  if (!root || typeof root !== "object") {
+    return null;
+  }
+  const r = root as Record<string, unknown>;
+  const pick = (o: unknown): EarshotApi | null => {
+    if (!o || typeof o !== "object") {
+      return null;
+    }
+    const x = o as Record<string, unknown>;
+    if (typeof x.init === "function") {
+      return o as EarshotApi;
+    }
+    return null;
+  };
+  return pick(r) ?? pick(r.default) ?? pick(r.Earshot);
+}
+
 declare global {
   interface Window {
-    Earshot?: {
-      init: (options: EarshotInitOptions) => void;
-      identify: (identity: Record<string, unknown>) => void;
-      reset: () => void;
-      open: () => void;
-    };
+    /** Present after `earshot.iife.js` loads; shape may be flat API or `{ default, Earshot, __esModule }`. */
+    Earshot?: EarshotApi | Record<string, unknown>;
   }
 }
 
@@ -34,8 +57,8 @@ type EarshotWidgetProps = {
 };
 
 /**
- * Loads the Earshot IIFE once, then polls until `window.Earshot.init` exists so we never run init
- * before the bundle finishes (Next.js / Strict Mode safe).
+ * Loads the Earshot IIFE once, then polls until a usable API (`init`) exists on `window.Earshot`,
+ * including ESM-shaped bundles (`default` / nested `Earshot`).
  */
 export function EarshotWidget({ projectId, apiKey }: EarshotWidgetProps) {
   const propsRef = useRef({ projectId, apiKey });
@@ -51,7 +74,7 @@ export function EarshotWidget({ projectId, apiKey }: EarshotWidgetProps) {
     let rafId = 0;
 
     const tryInit = (): boolean => {
-      const api = window.Earshot;
+      const api = resolveEarshotApi();
       const init = api?.init;
       if (typeof init !== "function") {
         return false;
@@ -78,8 +101,8 @@ export function EarshotWidget({ projectId, apiKey }: EarshotWidgetProps) {
       framesLeft -= 1;
       if (framesLeft <= 0) {
         console.warn(
-          "[Earshot] Timed out waiting for window.Earshot.init after the script loaded.",
-          "Open the console on mobile emulation too — if you see this, try a hard refresh or check for extensions blocking JS.",
+          "[Earshot] Timed out waiting for a usable Earshot API (init) after the script loaded.",
+          "Open DevTools → Console on real Chrome if this persists.",
         );
         return;
       }
