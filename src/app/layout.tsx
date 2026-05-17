@@ -72,9 +72,22 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
+const devGlobal = globalThis as typeof globalThis & { __EARSHOT_ENV_WARNED__?: boolean };
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  if (
+    process.env.NODE_ENV === "development" &&
+    !devGlobal.__EARSHOT_ENV_WARNED__ &&
+    (!env.NEXT_PUBLIC_EARSHOT_PROJECT_ID || !env.NEXT_PUBLIC_EARSHOT_API_KEY)
+  ) {
+    devGlobal.__EARSHOT_ENV_WARNED__ = true;
+    console.warn(
+      "[Sunday Hype] Earshot is disabled: set NEXT_PUBLIC_EARSHOT_PROJECT_ID and NEXT_PUBLIC_EARSHOT_API_KEY in .env.local (see .env.example), then restart `pnpm dev`.",
+    );
+  }
+
   return (
     <html lang="en" className={`${geist.variable}`}>
       <body>
