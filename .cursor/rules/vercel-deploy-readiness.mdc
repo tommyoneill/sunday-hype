@@ -1,0 +1,33 @@
+---
+description: Before finishing a change set, verify the same gates Vercel uses (lint, types, production build, Prisma, env).
+globs: "**/*"
+alwaysApply: true
+---
+
+# Vercel deployment readiness (Sunday Hype)
+
+This app deploys to **Vercel** as a **Next.js** project with **Prisma**. Treat a task as **not done** until local checks pass—the CI/build pipeline will fail the same way.
+
+## Required checks (run from repo root)
+
+Use **pnpm** (see `packageManager` in `package.json`):
+
+1. **`pnpm run check`** — `next lint` + `tsc --noEmit`. Fixes ESLint/type errors before push.
+2. **`pnpm run build`** — production `next build` (same compiler path as Vercel). Must complete with no errors.
+
+If either fails, fix the reported issues before summarizing the work as complete.
+
+## Align with Vercel’s install/build
+
+- **`postinstall`** runs **`prisma generate`**. If Prisma client is stale or the schema changed, run **`pnpm install`** (or `pnpm exec prisma generate`) locally before trusting `build`.
+- If **`prisma/schema.prisma`** or migrations changed, ensure migrations are committed and that production is meant to run **`prisma migrate deploy`** (or your documented flow)—call that out in the PR/summary when relevant.
+
+## Environment variables
+
+Server vars are validated in **`src/env.js`** (e.g. `DATABASE_URL`, `OPENAI_API_KEY`). **`NEXT_PUBLIC_*`** must be set for client behavior (e.g. Earshot).
+
+After adding or renaming env vars: update **`.env.example`**, **`src/env.js`**, and confirm **Vercel → Project → Settings → Environment Variables** includes values for Production (and Preview if needed).
+
+## When skipping builds
+
+Only mention **`SKIP_ENV_VALIDATION`** when the user explicitly uses Docker/CI patterns from **`next.config.js`**—do not rely on it for normal pre-deploy verification.
