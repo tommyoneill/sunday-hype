@@ -5,6 +5,8 @@ import { Geist } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
+import { EarshotWidget } from "~/components/earshot-widget";
+import { env } from "~/env";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
@@ -80,6 +82,12 @@ export default function RootLayout({
           {children}
           <Analytics />
           <SpeedInsights />
+          {env.NEXT_PUBLIC_EARSHOT_PROJECT_ID && env.NEXT_PUBLIC_EARSHOT_API_KEY ? (
+            <EarshotWidget
+              projectId={env.NEXT_PUBLIC_EARSHOT_PROJECT_ID}
+              apiKey={env.NEXT_PUBLIC_EARSHOT_API_KEY}
+            />
+          ) : null}
         </TRPCReactProvider>
       </body>
     </html>

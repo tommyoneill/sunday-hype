@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+      "earshot": {
+        "url": "https://mcp.earshotbot.com/mcp",
+        "headers": {
+          "Authorization": "Bearer pk_jle9enz17soshiiwx2w6n7fuvxl7jed1"
+        }
+      }
+    }
+  }
