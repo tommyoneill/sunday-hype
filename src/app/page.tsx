@@ -11,32 +11,42 @@ import { dateToCalendarDateString } from "~/utils/lectionary-date";
 import { getUpcomingSundays } from "~/utils/upcoming-sundays";
 
 export default function Home() {
-  const upcomingSundays = getUpcomingSundays(new Date());
-  const defaultDate = upcomingSundays[0] ?? new Date();
+  /**
+   * Sunday lists and `toLocaleDateString()` depend on the runtime timezone. The SSR shell often runs
+   * in UTC (e.g. Vercel) while the browser uses the visitor's zone, which would hydrate-mismatch
+   * button labels and query inputs — React #418. Initialize calendar state after mount instead.
+   */
+  const [datesReady, setDatesReady] = useState(false);
+  const [upcomingSundays, setUpcomingSundays] = useState<Date[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const [selectedDate, setSelectedDate] = useState<Date | null>(defaultDate);
+  useEffect(() => {
+    const upcoming = getUpcomingSundays(new Date());
+    setUpcomingSundays(upcoming);
+    setSelectedDate(upcoming[0] ?? new Date());
+    setDatesReady(true);
+  }, []);
 
   const queryDate =
-    selectedDate !== null ? dateToCalendarDateString(selectedDate) : dateToCalendarDateString(defaultDate);
+    selectedDate !== null ? dateToCalendarDateString(selectedDate) : "";
 
   const {
     data: readings,
     isLoading,
     error: queryError,
-  } = api.lectionary.getReadings.useQuery({
-    date: queryDate,
-  });
+  } = api.lectionary.getReadings.useQuery(
+    { date: queryDate },
+    { enabled: datesReady && queryDate.length > 0 },
+  );
 
   useEffect(() => {
-    if (selectedDate) {
-      trackDateSelected(dateToCalendarDateString(selectedDate));
-    }
-  }, [selectedDate]);
+    if (!datesReady || !selectedDate) return;
+    trackDateSelected(dateToCalendarDateString(selectedDate));
+  }, [datesReady, selectedDate]);
 
   useEffect(() => {
-    if (readings) {
-      trackReadingView(readings.id.toString(), "lectionary");
-    }
+    if (!readings) return;
+    trackReadingView(readings.id.toString(), "lectionary");
   }, [readings]);
 
   return (
@@ -48,16 +58,22 @@ export default function Home() {
         <div className="flex w-full max-w-2xl flex-col gap-8">
           <div className="flex flex-col gap-4 rounded-xl bg-white/10 p-4">
             <h3 className="text-2xl font-bold">Select Date</h3>
-            <DatePicker
-              selectedDate={selectedDate}
-              onDateChange={setSelectedDate}
-              upcomingSundays={upcomingSundays}
-            />
+            {datesReady ? (
+              <DatePicker
+                selectedDate={selectedDate}
+                onDateChange={setSelectedDate}
+                upcomingSundays={upcomingSundays}
+              />
+            ) : (
+              <div className="rounded-lg bg-white/5 py-10">
+                <Loading />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-4 rounded-xl bg-white/10 p-4">
             <h3 className="text-2xl font-bold">Readings</h3>
-            {isLoading ? (
+            {!datesReady || isLoading ? (
               <div className="mt-8 w-full rounded-lg bg-white/10 p-6">
                 <Loading />
               </div>
