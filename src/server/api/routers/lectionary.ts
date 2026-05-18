@@ -114,11 +114,11 @@ Gospel: ${gospel}`;
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
           ],
-          temperature: 0.7,
-          max_tokens: 750,
+          temperature: 0.65,
+          max_tokens: 1000,
           top_p: 0.9,
-          frequency_penalty: 0.5,
-          presence_penalty: 0.5,
+          frequency_penalty: 0.15,
+          presence_penalty: 0.15,
         });
         interpretation = chatResponse.choices[0]?.message.content ?? "";
       } catch (error) {

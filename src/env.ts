@@ -13,7 +13,7 @@ export const env = createEnv({
       .enum(["development", "test", "production"])
       .default("development"),
     OPENAI_API_KEY: z.string(),
-    OPENAI_MODEL: z.string().default("gpt-3.5-turbo"),
+    OPENAI_MODEL: z.string().default("gpt-4.1-mini"),
   },
 
   /**

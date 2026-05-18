@@ -23,7 +23,7 @@ Sunday Hype is a web application that:
 - **Frontend**: Next.js, React, TypeScript, Tailwind CSS
 - **Backend**: tRPC, Prisma
 - **Database**: PostgreSQL
-- **AI**: OpenAI (`OPENAI_MODEL`, default `gpt-3.5-turbo`; set in `.env`)
+- **AI**: OpenAI (`OPENAI_MODEL`, default `gpt-4.1-mini`; override in `.env`)
 - **API**: Lectserve for lectionary data
 
 ## Getting Started
@@ -56,7 +56,7 @@ Sunday Hype is a web application that:
    - `DATABASE_URL`
    - `DIRECT_URL` (required by Prisma in `schema.prisma` for migrations; duplicate `DATABASE_URL` locally when not using pooled connections)
    - `OPENAI_API_KEY`
-   - Optional `OPENAI_MODEL` (better quality vs cost tradeoff)
+   - Optional `OPENAI_MODEL` (override default model for cost vs quality)
 
 4. Set up the database:
    ```bash
@@ -77,6 +77,7 @@ pnpm test
 
 ## Operations & caveats
 
+- **Cached interpretations**: Rows already stored for a date keep the old text until deleted or regenerated—changing `OPENAI_MODEL` or the prompt only affects **new** dates (or after clearing those rows).
 - **Costs / abuse**: The public `lectionary.getReadings` procedure calls OpenAI when a date is uncached; add middleware or an edge rate limiter if the URL receives heavy traffic without auth.
 - **Legacy placeholder rows**: Older deployments could cache “No readings available…” rows after Lectserve outages. Safe to delete those rows in Postgres or via Prisma Studio so a retry can regenerate real content.
 
@@ -121,7 +122,7 @@ This repo commits [vercel.json](vercel.json) with recommended settings (`pnpm in
 | `DATABASE_URL` | PostgreSQL connection string (often pooled on serverless hosts) |
 | `DIRECT_URL` | Non-pooled URL for migrations (see Prisma docs; match your provider’s template) |
 | `OPENAI_API_KEY` | OpenAI API key |
-| `OPENAI_MODEL` | Optional model id (validated in [`src/env.ts`](src/env.ts)) |
+| `OPENAI_MODEL` | Model id for interpretations (default `gpt-4.1-mini` in [`src/env.ts`](src/env.ts)) |
 | `NEXT_PUBLIC_*` | Optional client keys (e.g. Earshot widget) |
 
 `NODE_ENV` is set automatically in production—you do not need to add it by hand unless your host requires overrides.
