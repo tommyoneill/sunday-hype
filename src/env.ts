@@ -8,10 +8,12 @@ export const env = createEnv({
    */
   server: {
     DATABASE_URL: z.string().url(),
+    DIRECT_URL: z.string().url().optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
     OPENAI_API_KEY: z.string(),
+    OPENAI_MODEL: z.string().default("gpt-3.5-turbo"),
   },
 
   /**
@@ -31,8 +33,10 @@ export const env = createEnv({
    */
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
+    DIRECT_URL: process.env.DIRECT_URL,
     NODE_ENV: process.env.NODE_ENV,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_MODEL: process.env.OPENAI_MODEL,
     NEXT_PUBLIC_EARSHOT_PROJECT_ID: process.env.NEXT_PUBLIC_EARSHOT_PROJECT_ID,
     NEXT_PUBLIC_EARSHOT_API_KEY: process.env.NEXT_PUBLIC_EARSHOT_API_KEY,
   },

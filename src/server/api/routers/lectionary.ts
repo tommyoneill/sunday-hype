@@ -1,143 +1,146 @@
-import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { TRPCError } from "@trpc/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { openai } from "../../openai";
+import { z } from "zod";
 
-interface LectserveResponse {
-  red_letter?: {
-    services?: Array<{
-      name?: string;
-      readings?: string[];
-    }>;
-  };
-}
+import { env } from "~/env";
+import {
+  CALENDAR_DATE_REGEX,
+  calendarDateStringToUtcDate,
+  formatLectserveDateFromCalendarString,
+} from "~/utils/lectionary-date";
+import { parseLectserveResponse, type LectserveResponse } from "~/utils/lectserve-parse";
+import { getUpcomingSundays } from "~/utils/upcoming-sundays";
+
+import { getOpenAI } from "../../openai";
+import { createTRPCRouter, publicProcedure } from "../trpc";
 
 export const lectionaryRouter = createTRPCRouter({
-  getUpcomingSundays: publicProcedure
-    .query(async () => {
-      const today = new Date();
-      const upcomingSundays = [];
-      
-      // Get the next 4 Sundays
-      for (let i = 0; i < 4; i++) {
-        const nextSunday = new Date(today);
-        // Set to next Sunday
-        nextSunday.setDate(today.getDate() + ((7 - today.getDay()) % 7) + (i * 7));
-        upcomingSundays.push(nextSunday);
-      }
-      
-      return upcomingSundays;
-    }),
+  getUpcomingSundays: publicProcedure.query(() => getUpcomingSundays(new Date())),
 
   getReadings: publicProcedure
-    .input(z.object({ date: z.date() }))
+    .input(
+      z.object({
+        date: z.string().regex(CALENDAR_DATE_REGEX, { message: "Expected calendar date YYYY-MM-DD." }),
+      }),
+    )
     .query(async ({ ctx, input }) => {
-      // First check if we already have the readings and interpretation
+      let dbDate;
+      try {
+        dbDate = calendarDateStringToUtcDate(input.date);
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid calendar date." });
+      }
+
       const existingReading = await ctx.db.lectionaryReading.findUnique({
-        where: { date: input.date },
+        where: { date: dbDate },
       });
 
       if (existingReading) {
         return existingReading;
       }
 
-      // Fetch from Lectserve API
-      const response = await fetch(`https://www.lectserve.com/date/${input.date.toISOString().split('T')[0]}`);
-      const data = (await response.json()) as LectserveResponse;
-
-      console.log('Lectserve API Response:', JSON.stringify(data, null, 2));
-
-      if (!data?.red_letter?.services?.[0]) {
-        console.log('Invalid API response structure:', {
-          hasRedLetter: !!data?.red_letter,
-          hasServices: !!data?.red_letter?.services,
-          hasFirstService: !!data?.red_letter?.services?.[0],
+      const urlSlug = formatLectserveDateFromCalendarString(input.date);
+      let response;
+      try {
+        response = await fetch(`https://www.lectserve.com/date/${urlSlug}`);
+      } catch (error) {
+        if (env.NODE_ENV === "development") {
+          console.error("[lectionary] Lectserve fetch failed:", error);
+        }
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: "Could not reach the lectionary service. Try again shortly.",
         });
-        // Create a database entry with placeholder text for unavailable readings
-        const placeholderReading = await ctx.db.lectionaryReading.create({
-          data: {
-            date: input.date,
-            firstReading: "No readings available for this date",
-            psalm: "No readings available for this date",
-            epistle: "No readings available for this date",
-            gospel: "No readings available for this date",
-            weekName: "No readings available",
-            interpretation: "No readings are available for this date. Please try another date.",
-          },
-        });
-        return placeholderReading;
       }
 
-      const service = data.red_letter.services[0];
-      const readings = service.readings ?? [];
-      const weekName = service.name ?? "Unknown Week";
-
-      console.log('Service data:', {
-        readings,
-        weekName,
-        serviceName: service.name,
-      });
-
-      // If no readings are available, create a database entry with placeholder text
-      if (readings.length === 0) {
-        const placeholderReading = await ctx.db.lectionaryReading.create({
-          data: {
-            date: input.date,
-            firstReading: "No readings available for this date",
-            psalm: "No readings available for this date",
-            epistle: "No readings available for this date",
-            gospel: "No readings available for this date",
-            weekName: weekName,
-            interpretation: "No readings are available for this date. Please try another date.",
-          },
+      if (!response.ok) {
+        if (env.NODE_ENV === "development") {
+          console.error("[lectionary] Lectserve HTTP", response.status);
+        }
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: `Lectionary service error (${response.status}). Try again later.`,
         });
-        return placeholderReading;
       }
-      
-      // Ensure we have all required readings
-      const firstReading = readings[0] ?? "No readings available for this date";
-      const psalm = readings[1] ?? "No readings available for this date";
-      const epistle = readings[2] ?? "No readings available for this date";
-      const gospel = readings[3] ?? "No readings available for this date";
-      
-      // Generate teenage-friendly interpretation
-      const prompt = `Please explain these Bible readings to a teenager:
-         
-      First Reading: ${firstReading}
-      Psalm: ${psalm}
-      Gospel: ${gospel}`;
+
+      let data: LectserveResponse;
+      try {
+        data = (await response.json()) as LectserveResponse;
+      } catch (error) {
+        if (env.NODE_ENV === "development") {
+          console.error("[lectionary] Invalid JSON from Lectserve:", error);
+        }
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: "Invalid response from the lectionary service.",
+        });
+      }
+
+      if (env.NODE_ENV === "development") {
+        const keys = Object.keys(data ?? {}).join(", ");
+        console.log("[lectionary] Lectserve payload keys:", keys);
+      }
+
+      const parsed = parseLectserveResponse(data);
+
+      if (!parsed.ok) {
+        const message =
+          parsed.code === "empty_readings"
+            ? "No readings are listed for this date yet. Try another date."
+            : "Readings are not available for this date.";
+        throw new TRPCError({ code: "NOT_FOUND", message });
+      }
+
+      const { weekName, firstReading, psalm, epistle, gospel } = parsed;
+
+      const userPrompt = `Please explain these Bible readings to a teenager:
+
+First Reading: ${firstReading}
+Psalm: ${psalm}
+Second Reading / Epistle: ${epistle}
+Gospel: ${gospel}`;
 
       const systemPrompt = await fs.readFile(
         path.join(process.cwd(), "src/server/prompts/teen-interpretation.md"),
-        "utf-8"
+        "utf-8",
       );
 
-      const chatResponse = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },          
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 750,
-        top_p: 0.9,
-        frequency_penalty: 0.5,
-        presence_penalty: 0.5,
-      });
+      let interpretation: string | null;
+      try {
+        const chatResponse = await getOpenAI().chat.completions.create({
+          model: env.OPENAI_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.7,
+          max_tokens: 750,
+          top_p: 0.9,
+          frequency_penalty: 0.5,
+          presence_penalty: 0.5,
+        });
+        interpretation = chatResponse.choices[0]?.message.content ?? "";
+      } catch (error) {
+        if (env.NODE_ENV === "development") {
+          console.error("[lectionary] OpenAI completion failed:", error);
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Could not generate the interpretation right now. Please try again.",
+        });
+      }
 
-      const interpretation = chatResponse.choices[0]?.message.content ?? "";
+      if (!interpretation?.trim()) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Interpretation came back empty. Please try again.",
+        });
+      }
 
-      // Store in database
       const newReading = await ctx.db.lectionaryReading.create({
         data: {
-          date: input.date,
+          date: dbDate,
           firstReading,
           psalm,
           epistle,
@@ -149,4 +152,4 @@ export const lectionaryRouter = createTRPCRouter({
 
       return newReading;
     }),
-}); 
+});

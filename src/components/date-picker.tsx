@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { createLocalCalendarDate } from "~/utils/upcoming-sundays";
+
 interface DatePickerProps {
   selectedDate: Date | null;
   onDateChange: (date: Date) => void;
@@ -11,14 +13,6 @@ interface DatePickerProps {
 export function DatePicker({ selectedDate, onDateChange, upcomingSundays }: DatePickerProps) {
   const [showCustomDate, setShowCustomDate] = useState(false);
   const [customMonth, setCustomMonth] = useState(new Date());
-
-  // Helper function to create a date without timezone issues
-  function createLocalDate(date: Date) {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const day = date.getDate();
-    return new Date(year, month, day);
-  }
 
   // Helper function to get all Sundays in a month
   function getSundaysInMonth(date: Date) {
@@ -37,7 +31,7 @@ export function DatePicker({ selectedDate, onDateChange, upcomingSundays }: Date
     
     // Add all Sundays in the month
     while (currentDate.getMonth() === month) {
-      sundays.push(new Date(currentDate));
+      sundays.push(createLocalCalendarDate(currentDate));
       currentDate.setDate(currentDate.getDate() + 7);
     }
     
@@ -77,7 +71,7 @@ export function DatePicker({ selectedDate, onDateChange, upcomingSundays }: Date
             <button
               key={date.toISOString()}
               onClick={() => {
-                onDateChange(createLocalDate(date));
+                onDateChange(createLocalCalendarDate(date));
                 setShowCustomDate(false);
               }}
               className={`rounded-lg px-4 py-2 transition-colors ${
@@ -123,7 +117,7 @@ export function DatePicker({ selectedDate, onDateChange, upcomingSundays }: Date
                 {sundaysInMonth.map((date) => (
                   <button
                     key={date.toISOString()}
-                    onClick={() => onDateChange(createLocalDate(date))}
+                    onClick={() => onDateChange(createLocalCalendarDate(date))}
                     className={`rounded-lg px-4 py-2 text-left transition-colors ${
                       selectedDate?.toDateString() === date.toDateString()
                         ? "bg-[hsl(280,100%,70%)] text-white"

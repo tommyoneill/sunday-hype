@@ -24,10 +24,10 @@ If either fails, fix the reported issues before summarizing the work as complete
 
 ## Environment variables
 
-Server vars are validated in **`src/env.js`** (e.g. `DATABASE_URL`, `OPENAI_API_KEY`). **`NEXT_PUBLIC_*`** must be set for client behavior (e.g. Earshot).
+Server vars are validated in **`src/env.ts`** (e.g. `DATABASE_URL`, `OPENAI_API_KEY`). **`NEXT_PUBLIC_*`** must be set for client behavior (e.g. Earshot).
 
-After adding or renaming env vars: update **`.env.example`**, **`src/env.js`**, and confirm **Vercel → Project → Settings → Environment Variables** includes values for Production (and Preview if needed).
+After adding or renaming env vars: update **`.env.example`**, **`src/env.ts`**, and confirm **Vercel → Project → Settings → Environment Variables** includes values for Production (and Preview if needed).
 
 ## When skipping builds
 
-Only mention **`SKIP_ENV_VALIDATION`** when the user explicitly uses Docker/CI patterns from **`next.config.js`**—do not rely on it for normal pre-deploy verification.
+Only mention **`SKIP_ENV_VALIDATION`** when the user explicitly uses Docker/CI patterns from **`next.config.ts`**—do not rely on it for normal pre-deploy verification.

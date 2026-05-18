@@ -1,7 +1,7 @@
 # Sunday Hype
 
 A modern, teen-friendly Catholic lectionary app that makes Mass readings more engaging and accessible for young people.
-cool stuff
+
 ## Overview
 
 Sunday Hype is a web application that:
@@ -23,7 +23,7 @@ Sunday Hype is a web application that:
 - **Frontend**: Next.js, React, TypeScript, Tailwind CSS
 - **Backend**: tRPC, Prisma
 - **Database**: PostgreSQL
-- **AI**: OpenAI GPT-3.5 Turbo
+- **AI**: OpenAI (`OPENAI_MODEL`, default `gpt-3.5-turbo`; set in `.env`)
 - **API**: Lectserve for lectionary data
 
 ## Getting Started
@@ -31,6 +31,7 @@ Sunday Hype is a web application that:
 ### Prerequisites
 
 - Node.js 18+
+- [pnpm](https://pnpm.io/) (matches `packageManager` in `package.json`)
 - PostgreSQL
 - OpenAI API key
 
@@ -44,26 +45,40 @@ Sunday Hype is a web application that:
 
 2. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. Set up your environment variables:
    ```bash
    cp .env.example .env
    ```
-   Then edit `.env` with your:
+   Edit `.env` with at least:
    - `DATABASE_URL`
+   - `DIRECT_URL` (required by Prisma in `schema.prisma` for migrations; duplicate `DATABASE_URL` locally when not using pooled connections)
    - `OPENAI_API_KEY`
+   - Optional `OPENAI_MODEL` (better quality vs cost tradeoff)
 
 4. Set up the database:
    ```bash
-   npx prisma db push
+   pnpm exec prisma db push
    ```
+   (`pnpm exec prisma migrate deploy` once you rely on migrations in production.)
 
 5. Start the development server:
    ```bash
-   npm run dev
+   pnpm dev
    ```
+
+### Tests
+
+```bash
+pnpm test
+```
+
+## Operations & caveats
+
+- **Costs / abuse**: The public `lectionary.getReadings` procedure calls OpenAI when a date is uncached; add middleware or an edge rate limiter if the URL receives heavy traffic without auth.
+- **Legacy placeholder rows**: Older deployments could cache “No readings available…” rows after Lectserve outages. Safe to delete those rows in Postgres or via Prisma Studio so a retry can regenerate real content.
 
 ## Contributing
 
@@ -88,44 +103,32 @@ Sunday Hype is optimized for deployment on Vercel. Here's how to deploy:
 1. Push your code to a GitHub repository
 2. Go to [Vercel](https://vercel.com) and create a new project
 3. Import your GitHub repository
-4. Configure the following environment variables in Vercel:
-   - `DATABASE_URL`: Your PostgreSQL connection string
-   - `OPENAI_API_KEY`: Your OpenAI API key
-   - `NODE_ENV`: Set to "production"
+4. Configure the environment variables listed in [.env.example](.env.example) (Production and Preview if needed)
 
-Vercel will automatically:
-- Build your Next.js application
-- Run database migrations
-- Deploy your application
-- Set up automatic deployments on every push to your main branch
+Vercel will:
+
+- Install with `pnpm` and run **`postinstall` → `prisma generate`** (see [vercel.json](vercel.json) for parity with CLI flags)
+- Build with `pnpm run build` (runs `next build`)
 
 ### Build Settings
 
-The following build settings are recommended for optimal performance:
-
-```json
-{
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "outputDirectory": ".next"
-}
-```
+This repo commits [vercel.json](vercel.json) with recommended settings (`pnpm install` + `pnpm run build`). The `outputDirectory` for Next on Vercel is managed automatically—no need to set `.next` manually in the dashboard.
 
 ### Environment Variables
 
-Make sure to add these environment variables in your Vercel project settings:
-
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | PostgreSQL connection string (often pooled on serverless hosts) |
+| `DIRECT_URL` | Non-pooled URL for migrations (see Prisma docs; match your provider’s template) |
 | `OPENAI_API_KEY` | OpenAI API key |
-| `NODE_ENV` | Set to "production" |
+| `OPENAI_MODEL` | Optional model id (validated in [`src/env.ts`](src/env.ts)) |
+| `NEXT_PUBLIC_*` | Optional client keys (e.g. Earshot widget) |
+
+`NODE_ENV` is set automatically in production—you do not need to add it by hand unless your host requires overrides.
 
 ### Custom Domain
 
 To set up a custom domain:
 1. Go to your project settings in Vercel
-2. Navigate to the "Domains" section
+2. Navigate to the **Domains** section
 3. Add your domain and follow the DNS configuration instructions
-

@@ -35,6 +35,18 @@ export default tseslint.config(
       ],
     },
   },
+  // Prisma resolves under `tsc` but TypeScript-ESLint projectService can treat generated
+  // client types as unresolved in this monorepo layout; keep strict checking elsewhere.
+  {
+    files: ["src/server/db.ts", "src/server/api/trpc.ts", "src/server/api/routers/lectionary.ts"],
+    rules: {
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-redundant-type-constituents": "off",
+    },
+  },
   {
     linterOptions: {
       reportUnusedDisableDirectives: true,

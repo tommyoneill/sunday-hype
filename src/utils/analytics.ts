@@ -8,6 +8,12 @@ export const trackReadingView = (readingId: string, readingType: string) => {
   });
 };
 
+export const trackDateSelected = (calendarDate: string) => {
+  track('Date Selected', {
+    calendarDate,
+  });
+};
+
 export const trackReadingShare = (readingId: string, platform: string) => {
   track('Reading Share', {
     readingId,
